@@ -1,0 +1,10 @@
+/* seems like each spirte is 70px wide and 80px high */
+
+.character {
+  width:70px;
+	height:80px;
+	display:inline-block;
+	position:absolute;
+	top:140px;
+	left:100px;
+}
