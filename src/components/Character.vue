@@ -1,25 +1,26 @@
 <template>
-    <div 
-        id="ch1" 
-        class="character" 
-        ref="kenRef" 
-    ></div>
+    <div id="ch1" class="character" ref="kenRef"></div>
+    <div class="character hadoken" ref="hadokenRef" :class="{ moving: showHadoken }"></div>
 </template>
 
 <script setup lang="ts">
 import { onBeforeUnmount, onMounted, Ref, ref } from 'vue';
-import { ICharacterActionsMap, Actions, ICharacterKeydownMap, KEYBOARD_KEYS, SPRITE_HEIGHT, SPRITE_WIDTH } from '../constants';
+import { ICharacterActionsMap, Actions, ICharacterKeydownMap, KEYBOARD_KEYS, SPRITE_HEIGHT, SPRITE_WIDTH, X_DISTANCE } from '../constants';
 
 const CHARACTER_ACTIONS: ICharacterActionsMap = { // X is base on the number of sprites...
-    // PUNCH: { Y: 2, X: [0, 1, 2, 3] },
     BEAM: { Y: 0, X: [0, 1, 2, 3] },
     STANDING: { Y: 1, X: [0, 1, 2, 3] },
     PUNCH: { Y: 2, X: [0, 1, 2] },
     WALK_RIGHT: { Y: 3, X: [0, 1, 2] },
     WALK_LEFT: { Y: 3, X: [2, 3, 4] },
-    KNEEL: { Y: 9, X: [0] },
     KICK: { Y: 6, X: [0, 1, 2, 3, 4] },
-    ROUND_HOUSE: { Y: 7, X: [0, 1, 2, 3, 4]}
+    ROUND_HOUSE: { Y: 7, X: [0, 1, 2, 3, 4]},
+    KNEEL: { Y: 9, X: [0] },
+};
+
+const SPECIAL_ACTIONS = {
+    START_HADOKEN: { Y: 4, X: [0, 1]},
+    END_HADOKEN: { Y: 5, X: [0, 1, 3, 4]},
 };
 
 const CHARACTER_KEY_MAP: ICharacterKeydownMap = {
@@ -36,6 +37,8 @@ let count: number = 0;
 let action: Actions = 'STANDING';
 
 const kenRef: Ref = ref(null);
+const hadokenRef: Ref = ref(null);
+const showHadoken = ref(false);
 const emit = defineEmits(['action'])
 
 let ch_X = 0;
@@ -63,28 +66,65 @@ function drawSprite(): void {
     kenRef.value.style.left = `${ch_X}px`;
 };
 
-function updateCoordinates(){
-    if (count >= CHARACTER_ACTIONS[action].X.length) { // Default to Standing
-        count = 0;
-        action = 'STANDING';
-        emit('action', 'STANDING');
+
+let beamCount: number = 0;
+let beam_X = 0;
+function drawBeamSprite(): void {
+    
+    if(hadokenRef.value) {
+        hadokenRef.value.style.backgroundPositionY = `${SPECIAL_ACTIONS['START_HADOKEN'].Y * SPRITE_HEIGHT}px`;
+        hadokenRef.value.style.backgroundPositionX = `${SPECIAL_ACTIONS['START_HADOKEN'].X[beamCount++] * SPRITE_WIDTH}px`;
+        
+        hadokenRef.value.style.left = `${beam_X-=SPRITE_WIDTH}px`;
+
+        if (beam_X > 621) { // width of the img
+            showHadoken.value = false;
+            beam_X = ch_X;
+            hadokenRef.value.style.left = ch_X;
+        }
     }
 
-    if (action == 'WALK_LEFT') { // TODO: refactor
-        ch_X = ch_X - 10;
-    } else if(action == 'WALK_RIGHT') {
-        ch_X = ch_X + 10;
+}
+
+function updateCoordinates(){
+    if (count >= CHARACTER_ACTIONS[action].X.length) {
+        setAction('STANDING'); // Default to Standing
+    };
+
+    if (count >= SPECIAL_ACTIONS['START_HADOKEN'].X.length) {
+        beamCount = 0   
     }
+
+
+    switch(action) {
+        case 'WALK_LEFT': {
+            return ch_X-=X_DISTANCE
+        };
+        case 'WALK_RIGHT': {
+            return ch_X+=X_DISTANCE;
+        }
+        case 'BEAM': {
+            beam_X = ch_X;
+            return showHadoken.value = true;
+        };
+        default: {
+            return ''
+        }
+    };
 }
 
 function drawCharacter() {
     updateCoordinates()
-    drawSprite()
+    drawSprite();
+
+    if (showHadoken.value) {
+        drawBeamSprite();
+    }
 }
 
 // Life Cycle Events; 
 onMounted(() => {
-    characterInterval = setInterval(drawCharacter, 200);
+    characterInterval = setInterval(drawCharacter, 150);
     document.addEventListener('keydown', onKeydown);
     emit('action', 'STANDING');
 });
@@ -99,10 +139,12 @@ onBeforeUnmount(() => {
 
 <style scoped>
 
-#ch1 {
-    width:70px;
-    height:80px; 
-    background-image: url('../assets/ken.png') ;
+.hadoken {
+    visibility: hidden;
 }
 
-</style>
+.moving {
+    visibility: visible;
+}
+
+</style>    

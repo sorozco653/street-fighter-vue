@@ -28,3 +28,4 @@ export type ICharacterActionsMap = {
 
 export const SPRITE_HEIGHT = -80;
 export const SPRITE_WIDTH = -70;
+export const X_DISTANCE = 10;
